@@ -6,6 +6,7 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives. serialization import (Encoding,
                                                            PrivateFormat, NoEncryption)
+import socket
 
 
 def request_certificate():
@@ -56,15 +57,29 @@ def encrypt_message(message: str, certificate):
 
 
 def decrypt_message(ciphertext):
-    pem_key = open(username + ".key", 'rb').read()
+    pem_key = open(USERNAME + ".key", 'rb').read()
     private_key = serialization.load_pem_private_key(
         pem_key, password=None, backend=default_backend())
     return private_key.decrypt(ciphertext, padding.PKCS1v15()).decode("utf-8")
 
 
-# request_certificate()
-username = "mfdutra"
-certificate = load_certificate("../ca/mfdutra.crt")
-cipher = encrypt_message("degla fsfs", certificate=certificate)
-msg = decrypt_message(cipher)
-print(msg)
+def init_socket():
+    host = "127.0.0.1"
+    port = 65432
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((host, port))
+        with open("../ca/mfdutra.crt", "rb") as cert_file:
+            cert_data = cert_file.read()
+            print(cert_data)
+            s.sendall(cert_data)
+
+
+USERNAME = "mfdutra"
+
+if __name__ == "__main__":
+    # request_certificate()
+    # certificate = load_certificate("../ca/mfdutra.crt")
+    # cipher = encrypt_message("degla fsfs", certificate=certificate)
+    # msg = decrypt_message(cipher)
+    # print(msg)
+    init_socket()

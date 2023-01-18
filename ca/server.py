@@ -3,6 +3,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 import datetime
 import uuid
+import socket
 
 
 def create_certificate(certificate_request_path: str):
@@ -37,5 +38,21 @@ def create_certificate(certificate_request_path: str):
         f.write(certificate.public_bytes(serialization. Encoding.PEM))
 
 
+def init_socket():
+    host = "127.0.0.1"
+    port = 65432
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((host, port))
+        s.listen()
+        print("listening")
+        while True:
+            client, ip = s.accept()
+            certificate = client.recv(4096)
+            cert = x509.load_pem_x509_certificate(
+                certificate, default_backend())
+            print(cert.issuer)
+
+
 if __name__ == '__main__':
-    create_certificate('../client/mfdutra.csr')
+    # create_certificate('../client/mfdutra.csr')
+    init_socket()
