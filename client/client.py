@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives. serialization import (Encoding,
 import socket
 
 USERNAME = ""
+DELIMETER = b"$END_MESSAGE$"
 
 
 def request_certificate(s: socket):
@@ -41,7 +42,7 @@ def request_certificate(s: socket):
                 PrivateFormat.TraditionalOpenSSL, NoEncryption()))
 
     # send the request to the ca server
-    s.sendall((USERNAME + '$END_MESSAGE$').encode("utf-8"))
+    s.sendall(USERNAME.encode("utf-8") + DELIMETER)
     s.sendall(request.public_bytes(Encoding.PEM))
 
 

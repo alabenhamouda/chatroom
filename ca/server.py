@@ -5,6 +5,8 @@ import datetime
 import uuid
 import socket
 
+DELIMETER = b"$END_MESSAGE$"
+
 
 def create_certificate(username, pem_csr):
     csr = x509.load_pem_x509_csr(pem_csr, default_backend())
@@ -58,7 +60,7 @@ def init_socket():
         while True:
             client, ip = s.accept()
             data = read_message(client)
-            username, certificate = data.split(b'$END_MESSAGE$')
+            username, certificate = data.split(DELIMETER)
             username = username.decode('utf-8')
             print(username)
             print(certificate)
