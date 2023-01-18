@@ -6,14 +6,13 @@ import uuid
 import socket
 
 
-def create_certificate(certificate_request_path: str):
-    pem_csr = open(certificate_request_path, 'rb').read()
+def create_certificate(username, pem_csr):
     csr = x509.load_pem_x509_csr(pem_csr, default_backend())
 
     pem_cert = open('ca.crt', 'rb').read()
     ca = x509.load_pem_x509_certificate(pem_cert, default_backend())
-    pem_key = open('ca.key', 'rb').read()
 
+    pem_key = open('ca.key', 'rb').read()
     ca_key = serialization.load_pem_private_key(
         pem_key, password=bytes("degla", 'utf-8'), backend=default_backend())
 
@@ -34,8 +33,19 @@ def create_certificate(certificate_request_path: str):
         backend=default_backend()
     )
 
-    with open('mfdutra.crt', 'wb') as f:
+    with open(f'{username}.crt', 'wb') as f:
         f.write(certificate.public_bytes(serialization. Encoding.PEM))
+    print("Certificate successfully created")
+
+
+def read_message(client: socket):
+    data = bytearray()
+    while True:
+        chunk = client.recv(1024)
+        if not chunk:
+            break
+        data.extend(chunk)
+    return bytes(data)
 
 
 def init_socket():
@@ -47,10 +57,12 @@ def init_socket():
         print("listening")
         while True:
             client, ip = s.accept()
-            certificate = client.recv(4096)
-            cert = x509.load_pem_x509_certificate(
-                certificate, default_backend())
-            print(cert.issuer)
+            data = read_message(client)
+            username, certificate = data.split(b'$END_MESSAGE$')
+            username = username.decode('utf-8')
+            print(username)
+            print(certificate)
+            create_certificate(username, certificate)
 
 
 if __name__ == '__main__':

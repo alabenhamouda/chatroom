@@ -8,8 +8,12 @@ from cryptography.hazmat.primitives. serialization import (Encoding,
                                                            PrivateFormat, NoEncryption)
 import socket
 
+USERNAME = ""
 
-def request_certificate():
+
+def request_certificate(s: socket):
+    global USERNAME
+    USERNAME = input("Enter your username: ")
     private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
@@ -18,7 +22,7 @@ def request_certificate():
 
     builder = x509.CertificateSigningRequestBuilder()
     builder = builder.subject_name(x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, u'USER:mfdutra'),
+        x509.NameAttribute(NameOID.COMMON_NAME, f'USER:{USERNAME}'),
         x509.NameAttribute(NameOID.COUNTRY_NAME, u'US'),
         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u'California'),
         x509.NameAttribute(NameOID.LOCALITY_NAME, u'Menlo Park'),
@@ -31,12 +35,14 @@ def request_certificate():
     request = builder.sign(
         private_key, hashes.SHA256(), default_backend())
 
-    with open('./mfdutra.csr', 'wb') as f:
-        f.write(request.public_bytes(Encoding.PEM))
-
-    with open('./mfdutra.key', 'wb') as f:
+    # write the private key to the current directory
+    with open(f'./{USERNAME}.key', 'wb') as f:
         f.write(private_key.private_bytes(Encoding.PEM,
                 PrivateFormat.TraditionalOpenSSL, NoEncryption()))
+
+    # send the request to the ca server
+    s.sendall((USERNAME + '$END_MESSAGE$').encode("utf-8"))
+    s.sendall(request.public_bytes(Encoding.PEM))
 
 
 def load_certificate(certificate_path):
@@ -68,13 +74,8 @@ def init_socket():
     port = 65432
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
-        with open("../ca/mfdutra.crt", "rb") as cert_file:
-            cert_data = cert_file.read()
-            print(cert_data)
-            s.sendall(cert_data)
+        request_certificate(s)
 
-
-USERNAME = "mfdutra"
 
 if __name__ == "__main__":
     # request_certificate()
