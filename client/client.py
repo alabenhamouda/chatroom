@@ -96,7 +96,7 @@ def read_message(client: socket):
 def recv(socket, other_username):
     # receive data stream. it won't accept data packet greater than 1024 bytes
     while True:
-        data = socket.recv(1024)
+        data = read_message(socket)
         if data:
             print(f'[{other_username}] :' +
                   decrypt_message(ciphertext=data).decode('utf-8'))
