@@ -7,6 +7,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives. serialization import (Encoding,
                                                            PrivateFormat, NoEncryption)
 import socket
+import os
 
 USERNAME = ""
 DELIMETER = b"$END_MESSAGE$"
@@ -16,6 +17,9 @@ other_user_cert = None
 def request_certificate(s: socket):
     global USERNAME
     USERNAME = input("Enter your username: ")
+    if os.path.exists(f"./{USERNAME}.key"):
+        return
+    send_option(s, b"OP_REQ_CERT")
     private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
@@ -89,7 +93,6 @@ def initiate_communication(s: socket):
     s.sendall(data)
 
     certificate = read_message(s)
-    print(certificate)
     global other_user_cert
     other_user_cert = load_certificate(certificate)
 
@@ -125,12 +128,11 @@ def accept_communication(s: socket):
 def send_option(s: socket, option: bytes):
     s.sendall(option)
     data = s.recv(1024)
-    print(data)
 
 
 def init_socket():
     host = "127.0.0.1"
-    port = 65434
+    port = 65433
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
         request_certificate(s)

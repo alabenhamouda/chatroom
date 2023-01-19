@@ -4,6 +4,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 import datetime
 import uuid
 import socket
+import threading
 
 DELIMETER = b"$END_MESSAGE$"
 users_socket = {}
@@ -70,7 +71,6 @@ def handle_accept_comm(client: socket):
         connection_details = users_socket[username]
         certificate = get_certificate(
             connection_details["initiator"])
-        print(certificate)
         host = connection_details["host"]
         port = connection_details["port"]
         data = bytearray()
@@ -80,26 +80,38 @@ def handle_accept_comm(client: socket):
         client.sendall(bytes(data))
 
 
+def handle_certificate_request(client: socket):
+    data = read_message(client)
+    username, certificate = data.split(DELIMETER)
+    username = username.decode('utf-8')
+    create_certificate(username, certificate)
+
+
+def handle_client(client: socket):
+    while True:
+        print("waiting for op")
+        operation = read_message(client)
+        print(operation)
+        client.sendall(b"OK")
+        if operation == b"OP_REQ_CERT":
+            handle_certificate_request(client)
+        elif operation == b"OP_INIT_COMM":
+            handle_initiate_comm(client)
+        elif operation == b"OP_ACC_COMM":
+            handle_accept_comm(client)
+
+
 def init_socket():
     host = "127.0.0.1"
-    port = 65434
+    port = 65433
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, port))
         s.listen()
         print("listening")
         while True:
             client, ip = s.accept()
-            data = read_message(client)
-            username, certificate = data.split(DELIMETER)
-            username = username.decode('utf-8')
-            create_certificate(username, certificate)
-            operation = read_message(client)
-            print(operation)
-            client.sendall(b"OK")
-            if operation == b"OP_INIT_COMM":
-                handle_initiate_comm(client)
-            elif operation == b"OP_ACC_COMM":
-                handle_accept_comm(client)
+            thread = threading.Thread(
+                target=handle_client, args=(client,)).start()
 
 
 if __name__ == '__main__':
