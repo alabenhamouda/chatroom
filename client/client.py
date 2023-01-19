@@ -5,13 +5,13 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives. serialization import (Encoding,
-                                                           PrivateFormat, NoEncryption)
-import socket
+                                                         PrivateFormat, NoEncryption)
 
+import socket
+import threading
 USERNAME = ""
 DELIMETER = b"$END_MESSAGE$"
 other_user_cert = None
-
 
 def request_certificate(s: socket):
     global USERNAME
@@ -56,10 +56,14 @@ def load_certificate(cert_data):
 
 
 def encrypt_message(message: str, certificate):
-    public_key = certificate.public_key()
+    public_key = certificate.public_key();
     encrypted_message = public_key.encrypt(
         bytes(message, 'utf-8'),
-        padding.PKCS1v15()
+        padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+        )
     )
     return encrypted_message
 
@@ -68,28 +72,39 @@ def decrypt_message(ciphertext):
     pem_key = open(USERNAME + ".key", 'rb').read()
     private_key = serialization.load_pem_private_key(
         pem_key, password=None, backend=default_backend())
-    return private_key.decrypt(ciphertext, padding.PKCS1v15()).decode("utf-8")
+    return private_key.decrypt(
+            ciphertext,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+    )
 
 
 def read_message(client: socket):
     chunk = client.recv(4096)
     return chunk
 
+def recv(socket,other_username):
+            # receive data stream. it won't accept data packet greater than 1024 bytes
+        while True:
+            data = socket.recv(1024)
+            if data :
+                print(f'[{other_username}] :' + decrypt_message(ciphertext=data).decode('utf-8'))
 
 def initiate_communication(s: socket):
     print("Enter the other person's username: ")
     other_username = input()
     new_host = '127.0.0.1'
-    new_port = '42069'
+    new_port = '9091'
     data = bytearray()
     data.extend(USERNAME.encode('utf-8') + DELIMETER)
     data.extend(other_username.encode('utf-8') + DELIMETER)
     data.extend(new_host.encode('utf-8') + DELIMETER)
     data.extend(new_port.encode('utf-8'))
     s.sendall(data)
-
     certificate = read_message(s)
-    print(certificate)
     global other_user_cert
     other_user_cert = load_certificate(certificate)
 
@@ -97,11 +112,14 @@ def initiate_communication(s: socket):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_chat:
         s_chat.bind((new_host, int(new_port)))
         s_chat.listen()
-        print("listening")
+        print("--------------------")
         while True:
             other_user, ip = s_chat.accept()
-            msg = read_message(other_user)
-            print(msg)
+            threadRecv = threading.Thread(target=recv,args=(other_user,other_username,)).start()
+            # send message
+            while True :
+                message = encrypt_message(message=input(),certificate=other_user_cert)
+                other_user.sendall(message)
 
 
 def accept_communication(s: socket):
@@ -119,18 +137,21 @@ def accept_communication(s: socket):
     other_user_cert = load_certificate(other_user_cert)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_chat:
         s_chat.connect((host, port))
-        s_chat.sendall(b"hello")
+        while True:
+            other_threadRecv= threading.Thread(target=recv,args=(s_chat,other_username,)).start()
+            message = encrypt_message(message = input() , certificate=other_user_cert)
+            s_chat.sendall(message)
+
 
 
 def send_option(s: socket, option: bytes):
     s.sendall(option)
     data = s.recv(1024)
-    print(data)
 
 
 def init_socket():
     host = "127.0.0.1"
-    port = 65434
+    port = 65435
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
         request_certificate(s)
@@ -156,3 +177,4 @@ if __name__ == "__main__":
     # msg = decrypt_message(cipher)
     # print(msg)
     init_socket()
+
