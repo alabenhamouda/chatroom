@@ -10,6 +10,7 @@ import socket
 
 USERNAME = ""
 DELIMETER = b"$END_MESSAGE$"
+other_user_cert = None
 
 
 def request_certificate(s: socket):
@@ -42,16 +43,16 @@ def request_certificate(s: socket):
                 PrivateFormat.TraditionalOpenSSL, NoEncryption()))
 
     # send the request to the ca server
-    s.sendall(USERNAME.encode("utf-8") + DELIMETER)
-    s.sendall(request.public_bytes(Encoding.PEM))
+    data = bytearray()
+    data.extend(USERNAME.encode("utf-8") + DELIMETER)
+    data.extend(request.public_bytes(Encoding.PEM))
+    s.sendall(bytes(data))
 
 
-def load_certificate(certificate_path):
-    with open(certificate_path, "rb") as cert_file:
-        cert_data = cert_file.read()
-        certificate = x509.load_pem_x509_certificate(
-            cert_data, default_backend())
-        return certificate
+def load_certificate(cert_data):
+    certificate = x509.load_pem_x509_certificate(
+        cert_data, default_backend())
+    return certificate
 
 
 def encrypt_message(message: str, certificate):
@@ -70,12 +71,54 @@ def decrypt_message(ciphertext):
     return private_key.decrypt(ciphertext, padding.PKCS1v15()).decode("utf-8")
 
 
+def read_message(client: socket):
+    chunk = client.recv(4096)
+    return chunk
+
+
+def initiate_communication(s: socket):
+    print("Enter the other person's username: ")
+    other_username = input()
+    new_host = '127.0.0.1'
+    new_port = '42069'
+    data = bytearray()
+    data.extend(other_username.encode('utf-8') + DELIMETER)
+    data.extend(new_host.encode('utf-8') + DELIMETER)
+    data.extend(new_port.encode('utf-8'))
+    s.sendall(data)
+
+    certificate = read_message(s)
+    print(certificate)
+    global other_user_cert
+    other_user_cert = load_certificate(certificate)
+
+    # create the new socket for exchanging messages
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_chat:
+        s_chat.bind((new_host, int(new_port)))
+        s_chat.listen()
+
+
+def send_option(s: socket, option: bytes):
+    s.sendall(option)
+    data = s.recv(1024)
+
+
 def init_socket():
     host = "127.0.0.1"
-    port = 65432
+    port = 65434
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
         request_certificate(s)
+        while True:
+            print("Select an operation:")
+            print("1. Initiate a communication with someone")
+            print("2. Accept a communication with someone")
+            option = int(input())
+            if option == 1:
+                send_option(s, b"OP_COMM_1")
+                initiate_communication(s)
+            else:
+                print("Option not supported!")
 
 
 if __name__ == "__main__":

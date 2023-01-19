@@ -6,6 +6,7 @@ import uuid
 import socket
 
 DELIMETER = b"$END_MESSAGE$"
+users_socket = {}
 
 
 def create_certificate(username, pem_csr):
@@ -41,18 +42,23 @@ def create_certificate(username, pem_csr):
 
 
 def read_message(client: socket):
-    data = bytearray()
-    while True:
-        chunk = client.recv(1024)
-        if not chunk:
-            break
-        data.extend(chunk)
-    return bytes(data)
+    chunk = client.recv(4096)
+    return chunk
+
+
+def handle_initiate_comm(client: socket):
+    data = read_message(client)
+    other_username, new_host, new_port = [
+        x.decode("utf-8") for x in data.split(DELIMETER)]
+    users_socket[other_username] = {"host": new_host, "port": new_port}
+    with open(f"{other_username}.crt", 'rb') as cert:
+        certificate = cert.read()
+        client.sendall(certificate)
 
 
 def init_socket():
     host = "127.0.0.1"
-    port = 65432
+    port = 65434
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, port))
         s.listen()
@@ -62,9 +68,11 @@ def init_socket():
             data = read_message(client)
             username, certificate = data.split(DELIMETER)
             username = username.decode('utf-8')
-            print(username)
-            print(certificate)
             create_certificate(username, certificate)
+            operation = read_message(client)
+            client.sendall(b"OK")
+            if operation == b"OP_COMM_1":
+                handle_initiate_comm(client)
 
 
 if __name__ == '__main__':
