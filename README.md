@@ -38,7 +38,7 @@ This project was made possible through the efforts of :
 3. If a client A wishes to communicate with a client B they will send their identity as well as their correspondent's indentity to the CA authority that will in return send client B's certificate containing their public key
 4. Client B will also do the same and thus our chatroom is established.(Client A aquired B's certificate and vice versa).
 our own spin on the <a href="https://en.wikipedia.org/wiki/Needham%E2%80%93Schroeder_protocol">Needham–Schroeder protocol</a>
-![screenshot](screentshots/screenshot2.png
+![screenshot](screentshots/screenshot2.png)
 5. Client A will act as a server and open up a socket that will transmit the messages between them.
 ## Usage
 * Clone the repository
