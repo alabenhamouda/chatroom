@@ -82,6 +82,7 @@ def initiate_communication(s: socket):
     new_host = '127.0.0.1'
     new_port = '42069'
     data = bytearray()
+    data.extend(USERNAME.encode('utf-8') + DELIMETER)
     data.extend(other_username.encode('utf-8') + DELIMETER)
     data.extend(new_host.encode('utf-8') + DELIMETER)
     data.extend(new_port.encode('utf-8'))
@@ -96,11 +97,35 @@ def initiate_communication(s: socket):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_chat:
         s_chat.bind((new_host, int(new_port)))
         s_chat.listen()
+        print("listening")
+        while True:
+            other_user, ip = s_chat.accept()
+            msg = read_message(other_user)
+            print(msg)
+
+
+def accept_communication(s: socket):
+    print("Enter the other person's username: ")
+    other_username = input()
+    data = bytearray()
+    data.extend(USERNAME.encode('utf-8') + DELIMETER)
+    data.extend(other_username.encode("utf-8"))
+    s.sendall(bytes(data))
+    data = read_message(s)
+    global other_user_cert
+    host, port, other_user_cert = data.split(DELIMETER)
+    host = host.decode("utf-8")
+    port = int(port.decode("utf-8"))
+    other_user_cert = load_certificate(other_user_cert)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_chat:
+        s_chat.connect((host, port))
+        s_chat.sendall(b"hello")
 
 
 def send_option(s: socket, option: bytes):
     s.sendall(option)
     data = s.recv(1024)
+    print(data)
 
 
 def init_socket():
@@ -115,8 +140,11 @@ def init_socket():
             print("2. Accept a communication with someone")
             option = int(input())
             if option == 1:
-                send_option(s, b"OP_COMM_1")
+                send_option(s, b"OP_INIT_COMM")
                 initiate_communication(s)
+            elif option == 2:
+                send_option(s, b"OP_ACC_COMM")
+                accept_communication(s)
             else:
                 print("Option not supported!")
 

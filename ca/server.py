@@ -46,14 +46,38 @@ def read_message(client: socket):
     return chunk
 
 
+def get_certificate(username: str):
+    with open(f"{username}.crt", 'rb') as cert:
+        certificate = cert.read()
+        return certificate
+
+
 def handle_initiate_comm(client: socket):
     data = read_message(client)
-    other_username, new_host, new_port = [
+    username, other_username, new_host, new_port = [
         x.decode("utf-8") for x in data.split(DELIMETER)]
-    users_socket[other_username] = {"host": new_host, "port": new_port}
-    with open(f"{other_username}.crt", 'rb') as cert:
-        certificate = cert.read()
-        client.sendall(certificate)
+    users_socket[other_username] = {
+        "host": new_host, "port": new_port, "initiator": username}
+    certificate = get_certificate(other_username)
+    client.sendall(certificate)
+
+
+def handle_accept_comm(client: socket):
+    data = read_message(client)
+    username, other_username = [
+        x.decode("utf-8") for x in data.split(DELIMETER)]
+    if username in users_socket.keys():
+        connection_details = users_socket[username]
+        certificate = get_certificate(
+            connection_details["initiator"])
+        print(certificate)
+        host = connection_details["host"]
+        port = connection_details["port"]
+        data = bytearray()
+        data.extend(host.encode('utf-8') + DELIMETER)
+        data.extend(port.encode('utf-8') + DELIMETER)
+        data.extend(certificate)
+        client.sendall(bytes(data))
 
 
 def init_socket():
@@ -70,9 +94,12 @@ def init_socket():
             username = username.decode('utf-8')
             create_certificate(username, certificate)
             operation = read_message(client)
+            print(operation)
             client.sendall(b"OK")
-            if operation == b"OP_COMM_1":
+            if operation == b"OP_INIT_COMM":
                 handle_initiate_comm(client)
+            elif operation == b"OP_ACC_COMM":
+                handle_accept_comm(client)
 
 
 if __name__ == '__main__':
