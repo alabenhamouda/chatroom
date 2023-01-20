@@ -57,4 +57,4 @@ cd client/ && python3 client.py
 Version 1:
 ![demo](screenshots/Peek%202023-01-19%2020-31.gif)
 Version 2:
-![video](screenshots/Demo.webm)
+![video](screenshots/Peek%202023-01-20%2020-22.gif)
