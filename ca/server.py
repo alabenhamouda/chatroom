@@ -5,12 +5,15 @@ import datetime
 import uuid
 import socket
 import threading
+import os
 
 DELIMETER = b"$END_MESSAGE$"
 users_socket = {}
 
 
 def create_certificate(username, pem_csr):
+    if os.path.exists(f"./{username}.crt"):
+        return
     csr = x509.load_pem_x509_csr(pem_csr, default_backend())
 
     pem_cert = open('ca.crt', 'rb').read()
@@ -92,13 +95,17 @@ def handle_client(client: socket):
         print("waiting for op")
         operation = read_message(client)
         print(operation)
-        client.sendall(b"OK")
         if operation == b"OP_REQ_CERT":
+            client.sendall(b"OK")
             handle_certificate_request(client)
         elif operation == b"OP_INIT_COMM":
+            client.sendall(b"OK")
             handle_initiate_comm(client)
         elif operation == b"OP_ACC_COMM":
+            client.sendall(b"OK")
             handle_accept_comm(client)
+        else:
+            return
 
 
 def init_socket():
