@@ -54,5 +54,7 @@ cd ca/ && python3 server.py
 cd client/ && python3 client.py
 ```
 ## Demo
-
+Version 1:
 ![demo](screenshots/Peek%202023-01-19%2020-31.gif)
+Version 2:
+![video](screenshots/Demo.webm)
