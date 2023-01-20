@@ -50,8 +50,13 @@ git repo clone alabenhamouda/chatroom
 cd ca/ && python3 server.py
 ```
 * Start multiple Clients :
+- if you want to launch a client that creats the chatroom add the argument 1
 ```shell
-cd client/ && python3 client.py
+cd client/ && python3 client.py 1
+```
+- if you want to launch a client that joins the chatroom add the argument 2
+```shell
+cd client/ && python3 client.py 2
 ```
 ## Demo
 Version 1:
